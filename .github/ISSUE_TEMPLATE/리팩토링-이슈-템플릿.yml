@@ -1,0 +1,45 @@
+name: 리팩토링 이슈 템플릿
+description: 코드 구조 개선 또는 품질 향상을 위한 이슈 템플릿입니다.
+title: "[Refactor] "
+labels: ["refactor"]
+assignees: []
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 1. 리팩토링 목적 (Goal)
+      placeholder: 예) PaymentService 결제 로직 복잡도 감소
+    validations:
+      required: true
+
+  - type: textarea
+    id: target
+    attributes:
+      label: 2. 개선 대상 (Target)
+      placeholder: 예) PaymentService, OrderController 등
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: 3. 개선 방향 (Approach)
+      placeholder: 예) Strategy 패턴 적용 / 메서드 분리
+    validations:
+      required: false
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: 4. 테스트 검증 (Testing)
+      placeholder: 예) 기존 단위 테스트 통과 여부 확인
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 5. 참고 자료 (References)
+      placeholder: 관련 문서/PR 링크
+    validations:
+      required: false

@@ -1,0 +1,39 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: gateway-server
+  config:
+    import: 'optional:configserver:'
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: config-server
+
+# Eureka Client
+eureka:
+  instance:
+    prefer-ip-address: false
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+  client:
+    register-with-eureka: ${EUREKA_REGISTER:true}
+    fetch-registry: ${EUREKA_FETCH:true}
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+# Actuator (기본만, 나머지는 config-repo에서)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics, gateway
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    root: INFO

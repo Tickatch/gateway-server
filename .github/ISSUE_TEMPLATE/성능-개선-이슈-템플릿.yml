@@ -1,0 +1,44 @@
+name: 성능 개선 이슈 템플릿
+description: 성능 최적화 및 병목 개선을 위한 이슈 템플릿입니다.
+title: "[Performance] "
+labels: ["performance"]
+assignees: []
+body:
+  - type: textarea
+    id: target
+    attributes:
+      label: 1. 개선 대상 (Target)
+      placeholder: 예) 상품 목록 조회 API 응답 속도
+    validations:
+      required: true
+
+  - type: textarea
+    id: cause
+    attributes:
+      label: 2. 문제 원인 (Cause)
+      placeholder: 예) N+1 발생, 캐싱 미적용
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan
+    attributes:
+      label: 3. 개선 전략 (Improvement Plan)
+      placeholder: 예) Fetch Join 적용 / Redis 캐시 적용
+    validations:
+      required: false
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: 4. 검증 방법 (Verification)
+      placeholder: 예) 성능 테스트 결과 비교 (300ms → 80ms)
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 5. 참고 자료 (References)
+    validations:
+      required: false

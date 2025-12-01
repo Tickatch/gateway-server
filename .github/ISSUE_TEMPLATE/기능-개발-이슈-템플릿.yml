@@ -1,0 +1,40 @@
+name: 기능 개발 이슈 템플릿
+description: 새로운 기능 개발을 위한 이슈 템플릿입니다.
+title: "[Feature] "
+labels: ["feature"]
+assignees: []
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 1. 기능 개요 (Summary)
+      description: 개발하려는 기능의 목적과 배경을 간단히 작성해주세요.
+      placeholder: 예) 주문 결제 API의 예외 처리 및 로깅 개선
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 2. 상세 설명 (Details)
+      description: 구현해야 할 기능의 구체적인 요구사항을 작성해주세요.
+      placeholder: 예) 결제 실패 시 PaymentException 발생, 주문 상태 업데이트 트랜잭션 분리 등
+    validations:
+      required: true
+
+  - type: textarea
+    id: test_cases
+    attributes:
+      label: 3. 테스트 시나리오 (Test Scenario)
+      description: 예상되는 테스트 케이스를 작성해주세요.
+      placeholder: 예) 결제 실패 시 400, 주문 상태 CANCELLED 변경 등
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 4. 참고 자료 (References)
+      placeholder: 관련 이슈/PR/문서 링크 등을 적어주세요.
+    validations:
+      required: false

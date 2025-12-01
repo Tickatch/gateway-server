@@ -1,0 +1,51 @@
+name: 버그 제보 이슈 템플릿
+description: 버그 또는 오류 상황을 보고하기 위한 템플릿입니다.
+title: "[Bug] "
+labels: ["bug"]
+assignees: []
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 1. 버그 개요 (Summary)
+      placeholder: 예) 주문 상세 페이지 진입 시 NPE 발생
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 2. 재현 절차 (Reproduction Steps)
+      placeholder: 1) 주문 내역 페이지 이동\n2) 특정 주문 클릭\n3) 콘솔 확인
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 3. 예상 결과 (Expected Behavior)
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 4. 실제 결과 (Actual Behavior)
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 5. 환경 정보 (Environment)
+      placeholder: OS / Browser / Backend Version 등
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 6. 참고 자료 (References)
+      placeholder: 로그, 스크린샷, 관련 이슈 / PR
+    validations:
+      required: false
