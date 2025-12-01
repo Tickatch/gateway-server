@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: Tickatch/config-server
+  IMAGE_NAME: tickatch/gateway-server
   VERSION: latest
 
 jobs:
