@@ -21,7 +21,7 @@ eureka:
     register-with-eureka: ${EUREKA_REGISTER:true}
     fetch-registry: ${EUREKA_FETCH:true}
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
 
 # Actuator (기본만, 나머지는 config-repo에서)
 management:
@@ -37,3 +37,7 @@ management:
 logging:
   level:
     root: INFO
+
+
+queue:
+  max-capacity: ${QUEUE_MAX_CAPACITY:100}
