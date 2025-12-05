@@ -9,9 +9,9 @@ spring:
   cloud:
     config:
       discovery:
-        enabled: true
+        enabled: false
         service-id: config-server
-
+      uri: https://www.pinjun.xyz/config
 # Eureka Client
 eureka:
   instance:
