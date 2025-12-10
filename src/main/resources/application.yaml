@@ -41,3 +41,4 @@ logging:
 
 queue:
   max-capacity: ${QUEUE_MAX_CAPACITY:100}
+  secret-key: ${QUEUE_SECRET_KEY}
