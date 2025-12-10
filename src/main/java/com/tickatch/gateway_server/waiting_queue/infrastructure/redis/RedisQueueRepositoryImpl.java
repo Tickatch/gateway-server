@@ -30,7 +30,7 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
   private final ReactiveRedisTemplate<String, String> redis;
 
   // 입장을 더 허용할 수 있는지?
-  public Mono<Boolean> canLetMoreEnter() {
+  private Mono<Boolean> canLetMoreEnter() {
     return redis.opsForHash()
         .size(ALLOWED_IN_HASH_KEY)
         .map(size -> size < allowedInUsersMaxCap)
@@ -53,6 +53,13 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
                     .then());
       }
     });
+  }
+
+  public Mono<Boolean> isInQueue(String token) {
+    return redis.opsForZSet()
+        .score(WAITING_QUEUE_KEY, token)
+        .map(score -> true)
+        .defaultIfEmpty(false);
   }
 
   public Mono<QueueStatusResponse> getCurrentStatus(String token) {

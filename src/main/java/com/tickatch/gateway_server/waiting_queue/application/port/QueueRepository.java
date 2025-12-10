@@ -12,4 +12,6 @@ public interface QueueRepository {
   Mono<Void> allowNextUser();
 
   Mono<Boolean> isAlreadyAllowedIn(String token);
+
+  Mono<Boolean> isInQueue(String token);
 }

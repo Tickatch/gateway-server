@@ -25,7 +25,6 @@ public class QueueFilter implements WebFilter, Ordered {
     // 나중에 userId는 jwt에서 가져오기
     String queueUserId = exchange.getRequest().getHeaders().getFirst("X-Queue-User-Id");
     String queueToken = exchange.getRequest().getHeaders().getFirst("X-Queue-Token");
-    String queueTimestamp = exchange.getRequest().getHeaders().getFirst("X-Queue-Timestamp");
 
     String path = exchange.getRequest().getPath().value();
 
@@ -41,14 +40,14 @@ public class QueueFilter implements WebFilter, Ordered {
     }
 
     // 대기열 토큰을 발급 안 했다면
-    if (!StringUtils.hasText(queueToken) || !StringUtils.hasText(queueTimestamp)) {
+    if (!StringUtils.hasText(queueToken)) {
       return responseHelper.writeError(
           exchange, HttpStatus.UNAUTHORIZED, "QUEUEING_REQUIRED", "대기열을 통해서 입장해주세요"
       );
     }
 
     // 입장 가능한지 redis를 조회
-    return queueService.canEnter(queueToken, queueUserId, queueTimestamp)
+    return queueService.canEnter(queueToken, queueUserId)
         .flatMap(canEnter ->
             canEnter ? chain.filter(exchange) : rejectWithQueueInfo(exchange, queueToken)
         )
