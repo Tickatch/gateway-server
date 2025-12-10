@@ -1,18 +1,18 @@
 package com.tickatch.gateway_server.waiting_queue.infrastructure.scheduler;
 
-import com.tickatch.gateway_server.waiting_queue.application.QueueService;
+import com.tickatch.gateway_server.waiting_queue.application.WaitingQueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 @RequiredArgsConstructor
 public class QueueScheduler {
 
-  private final QueueService queueService;
+  private final WaitingQueueService queueService;
 
   @Scheduled(fixedRate = 5000)
   public void processNextEntry() {
-    queueService.admitNextPerson();
+//    queueService.admitNextPerson().subscribe();
   }
 }
