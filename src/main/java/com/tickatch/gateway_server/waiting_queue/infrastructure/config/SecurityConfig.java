@@ -42,6 +42,7 @@ public class SecurityConfig {
             .pathMatchers("/api/v1/auth/register").permitAll()
             .pathMatchers("/api/v1/auth/refresh").permitAll()
             .pathMatchers("/api/v1/auth/check-email").permitAll()
+            .pathMatchers("/api/v1/auth/me").permitAll()
 
             // OAuth - 로그인/콜백만 공개 (link, unlink는 인증 필요)
             .pathMatchers(HttpMethod.GET, "/api/v1/auth/oauth/*/callback").permitAll()

@@ -132,4 +132,16 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
         })
         .then();
   }
+
+  public Mono<Boolean> removeAllowedToken(String token) {
+    return redis.opsForHash()
+        .remove(ALLOWED_IN_HASH_KEY, token)
+        .map(removed -> removed > 0)
+        .doOnSuccess(removed -> {
+          if (removed) {
+            log.info("입장 허용 토큰 제거 완료: {}", token);
+          }
+        })
+        .doOnError(error -> log.error("입장 허용 토큰 제거 중 오류 발생: {}", token, error));
+  }
 }

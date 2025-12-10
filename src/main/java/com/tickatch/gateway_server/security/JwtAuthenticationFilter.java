@@ -1,14 +1,14 @@
 package com.tickatch.gateway_server.security;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 /**
@@ -28,14 +28,14 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Component
-public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
+public class JwtAuthenticationFilter implements WebFilter, Ordered {
 
   private static final String HEADER_USER_ID = "X-User-Id";
   private static final String HEADER_USER_TYPE = "X-User-Type";
   private static final String CLAIM_USER_TYPE = "userType";
 
   @Override
-  public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+  public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
     return ReactiveSecurityContextHolder.getContext()
         .filter(context -> context.getAuthentication() != null)
         .filter(context -> context.getAuthentication().isAuthenticated())
@@ -68,6 +68,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
   @Override
   public int getOrder() {
     // QueueFilter보다 먼저 실행
-    return Ordered.HIGHEST_PRECEDENCE + 10;
+    return Ordered.HIGHEST_PRECEDENCE;
   }
 }
