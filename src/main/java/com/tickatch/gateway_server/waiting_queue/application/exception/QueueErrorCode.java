@@ -1,0 +1,17 @@
+package com.tickatch.gateway_server.waiting_queue.application.exception;
+
+import com.tickatch.gateway_server.global.error.ErrorCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum QueueErrorCode implements ErrorCode {
+
+  INVALID_QUEUE_TOKEN(HttpStatus.UNAUTHORIZED.value(), "INVALID_QUEUE_TOKEN"),
+  TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "TOKEN_NOT_FOUND");
+
+  private final int status;
+  private final String code;
+}
