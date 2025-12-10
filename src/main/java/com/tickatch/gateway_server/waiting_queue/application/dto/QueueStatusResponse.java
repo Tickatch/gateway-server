@@ -1,15 +1,11 @@
 package com.tickatch.gateway_server.waiting_queue.application.dto;
 
-import com.tickatch.gateway_server.waiting_queue.domain.dto.QueueStatus;
-
 public record QueueStatusResponse(
+    // 총 대기 인원
     Long totalQueueSize,
+    // 사용자 대기번호
     Long userQueuePosition,
+    // 사용자 기준 뒤로 몇 명
     Long usersBehind
 ) {
-
-  public static QueueStatusResponse from(QueueStatus queueStatus) {
-    return new QueueStatusResponse(queueStatus.totalQueueSize(), queueStatus.userQueuePosition(),
-        queueStatus.usersBehind());
-  }
 }
