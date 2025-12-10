@@ -13,7 +13,7 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-@Component
+//@Component
 @RequiredArgsConstructor
 public class QueueFilter implements WebFilter, Ordered {
 
