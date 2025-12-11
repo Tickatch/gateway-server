@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tickatch.gateway_server.global.util.HmacUtil;
 import com.tickatch.gateway_server.waiting_queue.application.WaitingQueueService;
 import com.tickatch.gateway_server.waiting_queue.application.exception.QueueException;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -121,7 +120,7 @@ class WaitingQueueIntegrationTest {
 
   @Test
   @DisplayName("입장 허용 토큰을 제거하면 다음 사용자가 자동으로 입장 허용된다")
-  void removeAllowedToken_AllowsNextUser() throws InterruptedException{
+  void removeAllowedToken_AllowsNextUser() throws InterruptedException {
     // given: 여러 사용자가 대기 중
     queueService.lineUp(USER_ID_1).block();
     queueService.lineUp(USER_ID_2).block();
@@ -132,14 +131,10 @@ class WaitingQueueIntegrationTest {
 
     // then: 다음 사용자가 입장 가능해짐
     // 약간의 지연 후 확인 (비동기 처리 고려)
-    try {
-      Thread.sleep(100);
-      StepVerifier.create(queueService.canEnter(USER_ID_2))
-          .assertNext(canEnter -> assertThat(canEnter).isTrue())
-          .verifyComplete();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    Thread.sleep(100);
+    StepVerifier.create(queueService.canEnter(USER_ID_2))
+        .assertNext(canEnter -> assertThat(canEnter).isTrue())
+        .verifyComplete();
   }
 
   @Test

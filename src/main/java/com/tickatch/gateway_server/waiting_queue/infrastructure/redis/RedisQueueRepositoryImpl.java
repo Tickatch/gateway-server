@@ -6,7 +6,6 @@ import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResp
 import com.tickatch.gateway_server.waiting_queue.application.exception.QueueException;
 import com.tickatch.gateway_server.waiting_queue.application.port.QueueRepository;
 import java.time.Instant;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;

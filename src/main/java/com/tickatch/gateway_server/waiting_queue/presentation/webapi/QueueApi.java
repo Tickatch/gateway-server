@@ -3,7 +3,6 @@ package com.tickatch.gateway_server.waiting_queue.presentation.webapi;
 import com.tickatch.gateway_server.global.api.ApiResponse;
 import com.tickatch.gateway_server.waiting_queue.application.WaitingQueueService;
 import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResponse;
-import com.tickatch.gateway_server.waiting_queue.presentation.dto.LineUpResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
