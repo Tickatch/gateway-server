@@ -1,11 +1,7 @@
 package com.tickatch.gateway_server.waiting_queue.application;
 
-import static com.tickatch.gateway_server.waiting_queue.application.exception.QueueErrorCode.INVALID_QUEUE_TOKEN;
-
 import com.tickatch.gateway_server.global.util.HmacUtil;
-import com.tickatch.gateway_server.waiting_queue.application.dto.LineUpResult;
 import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResponse;
-import com.tickatch.gateway_server.waiting_queue.application.exception.QueueException;
 import com.tickatch.gateway_server.waiting_queue.application.port.QueueRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,19 +20,19 @@ public class WaitingQueueService {
     this.secretKey = secretKey;
   }
 
-  public Mono<LineUpResult> lineUp(String userId) {
-    String token = HmacUtil.hmacSha26(secretKey, userId);
+  public Mono<String> lineUp(String userId) {
+    String token = getQueueToken(userId);
     return checkAlreadyAllowedIn(token)
-        .switchIfEmpty(checkAlreadyInQueue(token))
         .switchIfEmpty(enqueuedNewUser(token));
   }
 
-  public Mono<Boolean> canEnter(String token, String userId) {
-    validateToken(token, userId);
+  public Mono<Boolean> canEnter(String userId) {
+    String token = getQueueToken(userId);
     return queueRepository.isAlreadyAllowedIn(token);
   }
 
-  public Mono<QueueStatusResponse> getStatus(String token) {
+  public Mono<QueueStatusResponse> getStatus(String userId) {
+    String token = getQueueToken(userId);
     return queueRepository.getCurrentStatus(token);
   }
 
@@ -44,27 +40,33 @@ public class WaitingQueueService {
     return queueRepository.allowNextUser();
   }
 
-  private void validateToken(String token, String userId) {
-    String recreatedToken = HmacUtil.hmacSha26(secretKey, userId);
-
-    if (!token.equals(recreatedToken)) {
-      throw new QueueException(INVALID_QUEUE_TOKEN);
-    }
+  public Mono<Void> refreshAllowedInTimeStamp(String userId) {
+    String token = getQueueToken(userId);
+    return queueRepository.refreshAllowedInTimestamp(token);
   }
 
-  private Mono<LineUpResult> checkAlreadyAllowedIn(String token) {
+  public Mono<Boolean> removeAllowedToken(String userId) {
+    String token = getQueueToken(userId);
+    return queueRepository.removeAllowedToken(token);
+  }
+
+  public Mono<Void> cleanupExpiredTokens() {
+    return queueRepository.cleanupExpiredTokens()
+        .flatMapMany(i -> admitNextPerson())
+        .then();
+  }
+
+  private Mono<String> checkAlreadyAllowedIn(String token) {
     return queueRepository.isAlreadyAllowedIn(token)
         .filter(Boolean::booleanValue) // False면 자동으로 Mono.empty()를 반환
-        .map(isAllowed -> new LineUpResult(token, "이미 입장 가능한 상태입니다."));
+        .map(isAllowed -> "이미 입장 가능한 상태입니다.");
   }
 
-  private Mono<LineUpResult> checkAlreadyInQueue(String token) {
-    return queueRepository.isInQueue(token)
-        .filter(Boolean::booleanValue)
-        .map(isAllowed -> new LineUpResult(token, "이미 대기 중입니다."));
+  private Mono<String> enqueuedNewUser(String token) {
+    return queueRepository.lineUp(token).then(Mono.just("대기열에 등록되었습니다."));
   }
 
-  private Mono<LineUpResult> enqueuedNewUser(String token) {
-    return queueRepository.lineUp(token).then(Mono.just(new LineUpResult(token, "대기열에 등록되었습니다.")));
+  private String getQueueToken(String userId) {
+    return HmacUtil.hmacSha26(secretKey, userId);
   }
 }
