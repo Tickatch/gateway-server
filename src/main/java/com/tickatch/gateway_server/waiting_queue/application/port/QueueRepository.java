@@ -18,4 +18,6 @@ public interface QueueRepository {
   Mono<Void> refreshAllowedInTimestamp(String token);
 
   Mono<Long> cleanupExpiredTokens();
+
+  Mono<Boolean> removeWaitingToken(String token);
 }

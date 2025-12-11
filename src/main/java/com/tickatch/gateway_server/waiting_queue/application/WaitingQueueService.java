@@ -3,6 +3,7 @@ package com.tickatch.gateway_server.waiting_queue.application;
 import com.tickatch.gateway_server.global.util.HmacUtil;
 import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResponse;
 import com.tickatch.gateway_server.waiting_queue.application.port.QueueRepository;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -68,5 +69,10 @@ public class WaitingQueueService {
 
   private String getQueueToken(String userId) {
     return HmacUtil.hmacSha26(secretKey, userId);
+  }
+
+  public Mono<Boolean> removeWaitingToken(String userId) {
+    String token = getQueueToken(userId);
+    return queueRepository.removeWaitingToken(token);
   }
 }

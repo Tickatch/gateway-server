@@ -39,14 +39,26 @@ public class QueueApi {
         });
   }
 
-  @DeleteMapping
-  public Mono<ApiResponse<Void>> removeToken(@RequestHeader("X-User-Id") String userId) {
+  @DeleteMapping("/allowed-in-token")
+  public Mono<ApiResponse<Void>> removeAllowedInToken(@RequestHeader("X-User-Id") String userId) {
     return queueService.removeAllowedToken(userId)
         .map(removed -> {
           if (removed) {
             return ApiResponse.success(null, "입장 토큰이 무효화되었습니다.");
           } else {
-            return ApiResponse.error("NOT_FOUND", "무효화할 토큰이 없습니다.", HttpStatus.NOT_FOUND.value());
+            return ApiResponse.error("NOT_FOUND", "무효화할 입장 토큰이 없습니다.", HttpStatus.NOT_FOUND.value());
+          }
+        });
+  }
+
+  @DeleteMapping("/waiting-token")
+  public Mono<ApiResponse<Void>> removeWaitingToken(@RequestHeader("X-User-Id") String userId) {
+    return queueService.removeWaitingToken(userId)
+        .map(removed -> {
+          if (removed) {
+            return ApiResponse.success(null, "대기열 토큰이 무효화되었습니다.");
+          } else {
+            return ApiResponse.error("NOT_FOUND", "무효화할 대기열 토큰이 없습니다.", HttpStatus.NOT_FOUND.value());
           }
         });
   }

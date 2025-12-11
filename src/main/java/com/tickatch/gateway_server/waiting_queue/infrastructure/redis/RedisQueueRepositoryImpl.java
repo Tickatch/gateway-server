@@ -144,6 +144,17 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
         .reduce(0L, Long::sum);
   }
 
+  public Mono<Boolean> removeWaitingToken(String token) {
+    return redis.opsForZSet().remove(WAITING_QUEUE_KEY, token).flatMap(removed -> {
+          if (removed > 0) {
+            log.info("대기열 토큰 제거 완료: {}", token);
+            return allowNextUser().thenReturn(true);
+          }
+          return Mono.just(false);
+        })
+        .doOnError(error -> log.error("대기열 토큰 제거 중 오류 발생: {}", token, error));
+  }
+
   public Mono<Boolean> removeAllowedToken(String token) {
     return redis.opsForHash()
         .remove(ALLOWED_IN_HASH_KEY, token)
