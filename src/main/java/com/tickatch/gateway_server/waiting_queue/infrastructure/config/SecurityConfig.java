@@ -1,9 +1,12 @@
 package com.tickatch.gateway_server.waiting_queue.infrastructure.config;
 
+import com.tickatch.gateway_server.security.JwtAuthenticationFilter;
+import com.tickatch.gateway_server.waiting_queue.infrastructure.filter.QueueFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
@@ -12,7 +15,10 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 public class SecurityConfig {
 
   @Bean
-  public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+  public SecurityWebFilterChain securityWebFilterChain(
+      ServerHttpSecurity http,
+      JwtAuthenticationFilter jwtAuthenticationFilter,
+      QueueFilter queueFilter) {
     return http
         .csrf(ServerHttpSecurity.CsrfSpec::disable)
         .authorizeExchange(exchanges -> exchanges
@@ -51,6 +57,8 @@ public class SecurityConfig {
             .anyExchange().permitAll()
         )
         .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
+        .addFilterAfter(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+        .addFilterAfter(queueFilter, SecurityWebFiltersOrder.AUTHORIZATION)
         .build();
   }
 }
