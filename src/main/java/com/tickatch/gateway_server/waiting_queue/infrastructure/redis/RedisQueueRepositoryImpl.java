@@ -15,19 +15,26 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 @Repository
-@RequiredArgsConstructor
 @Slf4j
 public class RedisQueueRepositoryImpl implements QueueRepository {
 
   private static final String COUNTER_KEY = "queue:counter";
   private static final String WAITING_QUEUE_KEY = "queue:wait";
   private static final String ALLOWED_IN_HASH_KEY = "allowedIn:users";
-  private static final long ALLOWED_IN_DURATION_SECONDS = 240L;
-
-  @Value("${queue.max-capacity}")
-  private int allowedInUsersMaxCap;
+  private final int allowedInDurationSeconds;
+  private final int allowedInUsersMaxCap;
 
   private final ReactiveRedisTemplate<String, String> redis;
+
+  public RedisQueueRepositoryImpl(
+      ReactiveRedisTemplate<String, String> redis,
+      @Value("${queue.max-capacity}") int maxCap,
+      @Value("${queue.allowed-in-duration-seconds}") int durSec
+  ) {
+    this.redis = redis;
+    allowedInUsersMaxCap = maxCap;
+    allowedInDurationSeconds = durSec;
+  }
 
   // 입장을 더 허용할 수 있는지?
   private Mono<Boolean> canLetMoreEnter() {
@@ -54,14 +61,6 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
       }
     });
   }
-
-  public Mono<Boolean> isInQueue(String token) {
-    return redis.opsForZSet()
-        .score(WAITING_QUEUE_KEY, token)
-        .map(score -> true)
-        .defaultIfEmpty(false);
-  }
-
   public Mono<QueueStatusResponse> getCurrentStatus(String token) {
     // 순번 구하기
     Mono<Long> positionMono = redis.opsForZSet().rank(WAITING_QUEUE_KEY, token)
@@ -104,9 +103,22 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
     return redis.opsForHash().hasKey(ALLOWED_IN_HASH_KEY, token);
   }
 
-  // 스케줄러가 4분마다 호출할 메소드
-  public Mono<Void> cleanupExpiredTokens() {
-    long expiryTimestamp = Instant.now().getEpochSecond() - ALLOWED_IN_DURATION_SECONDS;
+  public Mono<Void> refreshAllowedInTimestamp(String token) {
+    return redis.opsForHash().hasKey(ALLOWED_IN_HASH_KEY, token)
+        .flatMap(exists -> {
+          if (exists) {
+            String timestamp = String.valueOf(Instant.now().getEpochSecond());
+            return redis.opsForHash()
+                .put(ALLOWED_IN_HASH_KEY, token, timestamp)
+                .then();
+          }
+          return Mono.empty();
+        });
+  }
+
+  // 스케줄러가 주기적으로 호출할 메소드
+  public Mono<Long> cleanupExpiredTokens() {
+    long expiryTimestamp = Instant.now().getEpochSecond() - allowedInDurationSeconds;
 
     return redis.opsForHash()
         .scan(ALLOWED_IN_HASH_KEY, ScanOptions.scanOptions().count(100).build())
@@ -120,27 +132,28 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
               // 만료된 토큰 삭제
               return redis.opsForHash()
                   .remove(ALLOWED_IN_HASH_KEY, token)
-                  .then();
+                  .map(removed -> removed > 0 ? 1L : 0L);
             }
           } catch (NumberFormatException e) {
             // 잘못된 형식의 타임스탬프도 삭제
             return redis.opsForHash()
                 .remove(ALLOWED_IN_HASH_KEY, token)
-                .then();
+                .map(removed -> removed > 0 ? 1L : 0L);
           }
           return Mono.just(0L);
         })
-        .then();
+        .reduce(0L, Long::sum);
   }
 
   public Mono<Boolean> removeAllowedToken(String token) {
     return redis.opsForHash()
         .remove(ALLOWED_IN_HASH_KEY, token)
-        .map(removed -> removed > 0)
-        .doOnSuccess(removed -> {
-          if (removed) {
+        .flatMap(removed -> {
+          if (removed > 0) {
             log.info("입장 허용 토큰 제거 완료: {}", token);
+            return allowNextUser().thenReturn(true);
           }
+          return Mono.just(false);
         })
         .doOnError(error -> log.error("입장 허용 토큰 제거 중 오류 발생: {}", token, error));
   }

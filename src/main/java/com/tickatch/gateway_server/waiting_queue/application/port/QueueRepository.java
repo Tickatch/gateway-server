@@ -13,5 +13,9 @@ public interface QueueRepository {
 
   Mono<Boolean> isAlreadyAllowedIn(String token);
 
-  Mono<Boolean> isInQueue(String token);
+  Mono<Boolean> removeAllowedToken(String token);
+
+  Mono<Void> refreshAllowedInTimestamp(String token);
+
+  Mono<Long> cleanupExpiredTokens();
 }
