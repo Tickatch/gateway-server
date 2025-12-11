@@ -1,11 +1,10 @@
 package com.tickatch.gateway_server.security;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.Ordered;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -27,8 +26,7 @@ import reactor.core.publisher.Mono;
  * @since 1.0.0
  */
 @Slf4j
-@Component
-public class JwtAuthenticationFilter implements WebFilter, Ordered {
+public class JwtAuthenticationFilter implements WebFilter {
 
   private static final String HEADER_USER_ID = "X-User-Id";
   private static final String HEADER_USER_TYPE = "X-User-Type";
@@ -47,7 +45,10 @@ public class JwtAuthenticationFilter implements WebFilter, Ordered {
           String userId = jwt.getSubject();
           String userType = jwt.getClaimAsString(CLAIM_USER_TYPE);
 
-          log.debug("JWT 인증 정보 추출 - userId: {}, userType: {}", userId, userType);
+          log.info("JWT 인증 정보 추출 - userId: {}, userType: {}", userId, userType);
+
+          // SecurityContext에 userId 저장
+
 
           // 헤더에 사용자 정보 추가
           ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
@@ -58,16 +59,10 @@ public class JwtAuthenticationFilter implements WebFilter, Ordered {
           ServerWebExchange mutatedExchange = exchange.mutate()
               .request(mutatedRequest)
               .build();
-
+          log.info("jwt필터 익스체인지 해시코드:{}", System.identityHashCode(mutatedExchange));
           return chain.filter(mutatedExchange);
         })
         // 인증 정보가 없으면 그냥 통과 (permitAll 엔드포인트)
         .switchIfEmpty(chain.filter(exchange));
-  }
-
-  @Override
-  public int getOrder() {
-    // QueueFilter보다 먼저 실행
-    return Ordered.HIGHEST_PRECEDENCE;
   }
 }
