@@ -16,4 +16,9 @@ public class RedisLuaScriptConfig {
   public RedisScript<Long> removeAllowedTokenScript() {
     return RedisScript.of(new ClassPathResource("lua/remove-allowed-token.lua"), Long.class);
   }
+
+  @Bean
+  public RedisScript<Long> cleanupExpiredTokensScript() {
+    return RedisScript.of(new ClassPathResource("lua/cleanup-expired-tokens.lua"), Long.class);
+  }
 }

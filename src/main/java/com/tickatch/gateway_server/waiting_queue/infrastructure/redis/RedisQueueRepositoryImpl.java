@@ -11,7 +11,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
@@ -30,19 +29,23 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
 
   private final RedisScript<String> lineupScript;
   private final RedisScript<Long> removeAllowedTokenScript;
+  private final RedisScript<Long> cleanupExpiredTokensScript;
 
   public RedisQueueRepositoryImpl(
       ReactiveRedisTemplate<String, String> redis,
       @Value("${queue.max-capacity}") int maxCap,
       @Value("${queue.allowed-in-duration-seconds}") int durSec,
       RedisScript<String> lineupScript,
-      RedisScript<Long> removeAllowedTokenScript
+      RedisScript<Long> removeAllowedTokenScript,
+      RedisScript<Long> cleanupExpiredTokensScript
+
   ) {
     this.redis = redis;
     this.allowedInUsersMaxCap = maxCap;
     this.allowedInDurationSeconds = durSec;
     this.lineupScript = lineupScript;
     this.removeAllowedTokenScript = removeAllowedTokenScript;
+    this.cleanupExpiredTokensScript = cleanupExpiredTokensScript;
   }
 
   //  같은 토큰으로 요청할 때마다 새로운 대기번호가 부여됨
@@ -60,6 +63,7 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
           default -> "대기열에 등록되었습니다.";
         });
   }
+
   public Mono<QueueStatusResponse> getCurrentStatus(String token) {
     // 순번 구하기
     Mono<Long> positionMono = redis.opsForZSet().rank(WAITING_QUEUE_KEY, token)
@@ -76,26 +80,6 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
 
       return new QueueStatusResponse(queueSize, userPos, usersBehind);
     });
-  }
-
-  public Mono<Void> allowNextUser() {
-    return redis.opsForZSet()
-        .popMin(WAITING_QUEUE_KEY)  // 대기열 맨 앞에 있는 사용자를 빼기
-        .flatMap(tuple -> {
-          if(tuple.getValue() == null) return Mono.empty();
-          String token = tuple.getValue();
-
-          // 뺀 사용자의 정보로 입장 허용 처리
-          return allowUserInWithToken(token);
-        });
-  }
-
-  private Mono<Void> allowUserInWithToken(String token) {
-    log.info("입장 허용 해시에 저장");
-    String timestamp = String.valueOf(Instant.now().getEpochSecond());
-    return redis.opsForHash()
-        .put(ALLOWED_IN_HASH_KEY, token, timestamp)
-        .then();
   }
 
   public Mono<Boolean> isAlreadyAllowedIn(String token) {
@@ -116,43 +100,26 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
   }
 
   // 스케줄러가 주기적으로 호출할 메소드
-  public Mono<Long> cleanupExpiredTokens() {
+  public Mono<Void> cleanupExpiredTokens() {
     long expiryTimestamp = Instant.now().getEpochSecond() - allowedInDurationSeconds;
 
-    return redis.opsForHash()
-        .scan(ALLOWED_IN_HASH_KEY, ScanOptions.scanOptions().count(100).build())
-        .flatMap(entry -> {
-          String token = (String) entry.getKey();
-          String timestampStr = (String) entry.getValue();
+    List<String> keys = Arrays.asList(ALLOWED_IN_HASH_KEY, WAITING_QUEUE_KEY);
+    List<String> args = Arrays.asList(
+        String.valueOf(expiryTimestamp),
+        String.valueOf(Instant.now().getEpochSecond())
+    );
 
-          try {
-            long timestamp = Long.parseLong(timestampStr);
-            if (timestamp < expiryTimestamp) {
-              // 만료된 토큰 삭제
-              return redis.opsForHash()
-                  .remove(ALLOWED_IN_HASH_KEY, token)
-                  .map(removed -> removed > 0 ? 1L : 0L);
-            }
-          } catch (NumberFormatException e) {
-            // 잘못된 형식의 타임스탬프도 삭제
-            return redis.opsForHash()
-                .remove(ALLOWED_IN_HASH_KEY, token)
-                .map(removed -> removed > 0 ? 1L : 0L);
-          }
-          return Mono.just(0L);
-        })
-        .reduce(0L, Long::sum);
+    return redis.execute(cleanupExpiredTokensScript, keys, args)
+        .next()
+        .doOnNext(count -> log.info("만료된 토큰 {}개 정리 완료", count))
+        .then();
   }
 
   public Mono<Boolean> removeWaitingToken(String token) {
-    return redis.opsForZSet().remove(WAITING_QUEUE_KEY, token).flatMap(removed -> {
-          if (removed > 0) {
-            log.info("대기열 토큰 제거 완료: {}", token);
-            return allowNextUser().thenReturn(true);
-          }
-          return Mono.just(false);
-        })
-        .doOnError(error -> log.error("대기열 토큰 제거 중 오류 발생: {}", token, error));
+    return redis.opsForZSet()
+        .remove(WAITING_QUEUE_KEY, token)
+        .map(removed -> removed > 0)
+        .onErrorReturn(false);
   }
 
   public Mono<Boolean> removeAllowedToken(String token) {

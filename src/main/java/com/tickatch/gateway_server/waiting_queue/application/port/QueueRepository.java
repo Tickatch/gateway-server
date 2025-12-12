@@ -9,15 +9,13 @@ public interface QueueRepository {
 
   Mono<QueueStatusResponse> getCurrentStatus(String token);
 
-  Mono<Void> allowNextUser();
-
   Mono<Boolean> isAlreadyAllowedIn(String token);
 
   Mono<Boolean> removeAllowedToken(String token);
 
   Mono<Void> refreshAllowedInTimestamp(String token);
 
-  Mono<Long> cleanupExpiredTokens();
+  Mono<Void> cleanupExpiredTokens();
 
   Mono<Boolean> removeWaitingToken(String token);
 }

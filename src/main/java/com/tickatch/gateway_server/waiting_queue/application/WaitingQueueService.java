@@ -35,10 +35,6 @@ public class WaitingQueueService {
     return queueRepository.getCurrentStatus(token);
   }
 
-  public Mono<Void> admitNextPerson() {
-    return queueRepository.allowNextUser();
-  }
-
   public Mono<Void> refreshAllowedInTimeStamp(String userId) {
     String token = getQueueToken(userId);
     return queueRepository.refreshAllowedInTimestamp(token);
@@ -50,17 +46,15 @@ public class WaitingQueueService {
   }
 
   public Mono<Void> cleanupExpiredTokens() {
-    return queueRepository.cleanupExpiredTokens()
-        .flatMapMany(i -> admitNextPerson())
-        .then();
-  }
-
-  private String getQueueToken(String userId) {
-    return HmacUtil.hmacSha26(secretKey, userId);
+    return queueRepository.cleanupExpiredTokens();
   }
 
   public Mono<Boolean> removeWaitingToken(String userId) {
     String token = getQueueToken(userId);
     return queueRepository.removeWaitingToken(token);
+  }
+
+  private String getQueueToken(String userId) {
+    return HmacUtil.hmacSha26(secretKey, userId);
   }
 }
