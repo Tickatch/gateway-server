@@ -6,10 +6,13 @@ import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResp
 import com.tickatch.gateway_server.waiting_queue.application.exception.QueueException;
 import com.tickatch.gateway_server.waiting_queue.application.port.QueueRepository;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
@@ -25,40 +28,34 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
 
   private final ReactiveRedisTemplate<String, String> redis;
 
+  private final RedisScript<String> lineupScript;
+
   public RedisQueueRepositoryImpl(
       ReactiveRedisTemplate<String, String> redis,
       @Value("${queue.max-capacity}") int maxCap,
-      @Value("${queue.allowed-in-duration-seconds}") int durSec
+      @Value("${queue.allowed-in-duration-seconds}") int durSec,
+      RedisScript<String> lineupScript
   ) {
     this.redis = redis;
-    allowedInUsersMaxCap = maxCap;
-    allowedInDurationSeconds = durSec;
-  }
-
-  // 입장을 더 허용할 수 있는지?
-  private Mono<Boolean> canLetMoreEnter() {
-    return redis.opsForHash()
-        .size(ALLOWED_IN_HASH_KEY)
-        .map(size -> size < allowedInUsersMaxCap)
-        .defaultIfEmpty(true);
+    this.allowedInUsersMaxCap = maxCap;
+    this.allowedInDurationSeconds = durSec;
+    this.lineupScript = lineupScript;
   }
 
   //  같은 토큰으로 요청할 때마다 새로운 대기번호가 부여됨
   //  입장 가능하면 기다리지 않고 바로 입장
-  public Mono<Void> lineUp(String token) {
-    return canLetMoreEnter().flatMap(canEnter -> {
-      if (canEnter) {
-        log.info("바로 입장함");
-        return allowUserInWithToken(token);
-      } else {
-        return redis.opsForValue()
-            .increment(COUNTER_KEY)
-            .flatMap(seq ->
-                redis.opsForZSet()
-                    .add(WAITING_QUEUE_KEY, token, seq)
-                    .then());
-      }
-    });
+  public Mono<String> lineUp(String token) {
+    List<String> keys = Arrays.asList(ALLOWED_IN_HASH_KEY, COUNTER_KEY, WAITING_QUEUE_KEY);
+    List<String> args = Arrays.asList(token, String.valueOf(allowedInUsersMaxCap),
+        String.valueOf(Instant.now().getEpochSecond()));
+
+    return redis.execute(lineupScript, keys, args)
+        .next()
+        .map(result -> switch (result) {
+          case "ALREADY_ALLOWED" -> "이미 입장 가능한 상태입니다.";
+          case "ALLOWED" -> "바로 입장 가능합니다.";
+          default -> "대기열에 등록되었습니다.";
+        });
   }
   public Mono<QueueStatusResponse> getCurrentStatus(String token) {
     // 순번 구하기

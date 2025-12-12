@@ -5,7 +5,7 @@ import reactor.core.publisher.Mono;
 
 public interface QueueRepository {
 
-  Mono<Void> lineUp(String token);
+  Mono<String> lineUp(String token);
 
   Mono<QueueStatusResponse> getCurrentStatus(String token);
 
