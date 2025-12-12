@@ -29,17 +29,20 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
   private final ReactiveRedisTemplate<String, String> redis;
 
   private final RedisScript<String> lineupScript;
+  private final RedisScript<Long> removeAllowedTokenScript;
 
   public RedisQueueRepositoryImpl(
       ReactiveRedisTemplate<String, String> redis,
       @Value("${queue.max-capacity}") int maxCap,
       @Value("${queue.allowed-in-duration-seconds}") int durSec,
-      RedisScript<String> lineupScript
+      RedisScript<String> lineupScript,
+      RedisScript<Long> removeAllowedTokenScript
   ) {
     this.redis = redis;
     this.allowedInUsersMaxCap = maxCap;
     this.allowedInDurationSeconds = durSec;
     this.lineupScript = lineupScript;
+    this.removeAllowedTokenScript = removeAllowedTokenScript;
   }
 
   //  같은 토큰으로 요청할 때마다 새로운 대기번호가 부여됨
@@ -153,15 +156,12 @@ public class RedisQueueRepositoryImpl implements QueueRepository {
   }
 
   public Mono<Boolean> removeAllowedToken(String token) {
-    return redis.opsForHash()
-        .remove(ALLOWED_IN_HASH_KEY, token)
-        .flatMap(removed -> {
-          if (removed > 0) {
-            log.info("입장 허용 토큰 제거 완료: {}", token);
-            return allowNextUser().thenReturn(true);
-          }
-          return Mono.just(false);
-        })
-        .doOnError(error -> log.error("입장 허용 토큰 제거 중 오류 발생: {}", token, error));
+    List<String> keys = Arrays.asList(ALLOWED_IN_HASH_KEY, WAITING_QUEUE_KEY);
+    List<String> args = Arrays.asList(token, String.valueOf(Instant.now().getEpochSecond()));
+
+    return redis.execute(removeAllowedTokenScript, keys, args)
+        .next()
+        .map(removed -> removed > 0)
+        .onErrorReturn(false);
   }
 }

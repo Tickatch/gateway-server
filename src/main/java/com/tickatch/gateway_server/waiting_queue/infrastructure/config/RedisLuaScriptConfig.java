@@ -11,4 +11,9 @@ public class RedisLuaScriptConfig {
   public RedisScript<String> lineupScript() {
     return RedisScript.of(new ClassPathResource("lua/lineup.lua"), String.class);
   }
+
+  @Bean
+  public RedisScript<Long> removeAllowedTokenScript() {
+    return RedisScript.of(new ClassPathResource("lua/remove-allowed-token.lua"), Long.class);
+  }
 }
