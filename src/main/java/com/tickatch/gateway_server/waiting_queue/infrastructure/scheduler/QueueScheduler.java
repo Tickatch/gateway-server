@@ -14,7 +14,7 @@ public class QueueScheduler {
 
   private final WaitingQueueService queueService;
 
-  @Scheduled(fixedRate = 10000, initialDelay = 10000)
+  @Scheduled(fixedRate = 300000, initialDelay = 300000)
   public void processNextEntry() {
     queueService.cleanupExpiredTokens()
         .doOnSuccess(v -> log.info("만료 토큰 정리 완료"))
