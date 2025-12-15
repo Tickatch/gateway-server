@@ -9,9 +9,9 @@ spring:
   cloud:
     config:
       discovery:
-        enabled: true
+        enabled: false
         service-id: config-server
-
+      uri: https://www.pinjun.xyz/config
 # Eureka Client
 eureka:
   instance:
@@ -21,7 +21,7 @@ eureka:
     register-with-eureka: ${EUREKA_REGISTER:true}
     fetch-registry: ${EUREKA_FETCH:true}
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
 
 # Actuator (기본만, 나머지는 config-repo에서)
 management:
@@ -37,3 +37,9 @@ management:
 logging:
   level:
     root: INFO
+
+
+queue:
+  max-capacity: ${QUEUE_MAX_CAPACITY:100}
+  secret-key: ${QUEUE_SECRET_KEY}
+  allowed-in-duration-seconds: ${ALLOWED_IN_DURATION_SECONDS:240}
