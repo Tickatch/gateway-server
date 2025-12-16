@@ -8,6 +8,7 @@ Tickatch MSA의 **API Gateway** 서버입니다.
 
 - 모든 API 요청의 단일 진입점
 - 라우팅 및 로드밸런싱
+- 대기열 및 입장 허용 사용자 목록 관리
 - 인증/인가 처리
 - Rate Limiting, Circuit Breaker
 - 이중화 구성으로 고가용성 확보
