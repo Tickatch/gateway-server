@@ -3,6 +3,7 @@ package com.tickatch.gateway_server.waiting_queue.infrastructure.scheduler;
 import com.tickatch.gateway_server.waiting_queue.application.WaitingQueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -15,6 +16,11 @@ public class QueueScheduler {
   private final WaitingQueueService queueService;
 
   @Scheduled(fixedRate = 300000, initialDelay = 300000)
+  @SchedulerLock(
+      name = "allowedInTokenCleanup",
+      lockAtMostFor = "4m",
+      lockAtLeastFor = "3m"
+  )
   public void processNextEntry() {
     queueService.cleanupExpiredTokens()
         .doOnSuccess(v -> log.info("만료 토큰 정리 완료"))
