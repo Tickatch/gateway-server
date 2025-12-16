@@ -13,8 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -29,9 +27,7 @@ public class QueueFilter implements GlobalFilter, Ordered {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-    String requestId = exchange.getRequest().getId();
     String path = exchange.getRequest().getPath().value();
-    String method = exchange.getRequest().getMethod().toString();
 
     // 해당 요청에서 큐 필터를 이미 한 번 통과했다면 스킵
     Boolean alreadyApplied = exchange.getAttribute(QUEUE_FILTER_APPLIED);
@@ -69,23 +65,19 @@ public class QueueFilter implements GlobalFilter, Ordered {
     // 4. 입장 가능한지 체크
     // 입장 가능: 입장 허용 타임스탬프 갱신 + 요청 통과
     // 입장 불가: 대기열 상태 반환
-    log.info("[{}] 입장 가능 여부 체크 시작", requestId);
-
     return queueService.canEnter(userId)
         .flatMap(canEnter -> {
           if (!canEnter) {
-            return rejectWithQueueInfo(exchange, userId, requestId);
+            return rejectWithQueueInfo(exchange, userId);
           }
 
-          return queueService.refreshAllowedInTimeStamp(userId)
-              .doOnSuccess(v -> log.info("[{}] 타임스탬프 갱신 완료", requestId))
-              .then(chain.filter(exchange));
+          return queueService.refreshAllowedInTimeStamp(userId).then(chain.filter(exchange));
         });
   }
 
   // redis 입장 허용 해시에 필드가 없다면
   // 대기열에 토큰이 있는지 확인 -> 대기열에 있으면 대기 중인 사람, 없으면 토큰이 만료된 사람
-  private Mono<Void> rejectWithQueueInfo(ServerWebExchange exchange, String userId, String requestId) {
+  private Mono<Void> rejectWithQueueInfo(ServerWebExchange exchange, String userId) {
     return queueService.getStatus(userId)
         .flatMap(status -> responseHelper.writeSuccessWithStatus(
             exchange, HttpStatus.TOO_MANY_REQUESTS, status, "대기 중입니다.")
