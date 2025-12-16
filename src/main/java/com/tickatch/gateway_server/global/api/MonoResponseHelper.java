@@ -38,7 +38,7 @@ public class MonoResponseHelper {
    */
   private <T> Mono<Void> writeResponse(ServerWebExchange exchange, HttpStatus status, ApiResponse<T> response) {
 
-    // 응답이 이미 커밋되었다면 처리하지 않음
+    // 이미 응답이 커밋되었다면 처리하지 않음
     if (exchange.getResponse().isCommitted()) {
       return Mono.empty();
     }
@@ -54,5 +54,4 @@ public class MonoResponseHelper {
       return Mono.error(e);
     }
   }
-
 }

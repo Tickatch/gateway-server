@@ -15,10 +15,15 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 public class SecurityConfig {
 
   @Bean
+  public JwtAuthenticationFilter jwtAuthenticationFilter() {
+    return new JwtAuthenticationFilter();
+  }
+
+  @Bean
   public SecurityWebFilterChain securityWebFilterChain(
       ServerHttpSecurity http,
-      JwtAuthenticationFilter jwtAuthenticationFilter,
-      QueueFilter queueFilter) {
+      JwtAuthenticationFilter jwtAuthenticationFilter
+  ) {
     return http
         .csrf(ServerHttpSecurity.CsrfSpec::disable)
         .authorizeExchange(exchanges -> exchanges
@@ -58,7 +63,6 @@ public class SecurityConfig {
         )
         .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
         .addFilterAfter(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-        .addFilterAfter(queueFilter, SecurityWebFiltersOrder.AUTHORIZATION)
         .build();
   }
 }
