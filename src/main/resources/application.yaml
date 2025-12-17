@@ -12,6 +12,11 @@ spring:
         enabled: false
         service-id: config-server
       uri: https://www.pinjun.xyz/config
+  data:
+    redis:
+      host: ${REDIS_IP:localhost}
+      port: 6379
+      password: ${REDIS_PW:#{null}}
 # Eureka Client
 eureka:
   instance:
