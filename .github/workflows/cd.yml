@@ -11,7 +11,7 @@ env:
 
 jobs:
   ImageBuild:
-    name: Build Docker Image
+    name: Build Docker Image and Deploy on GCP
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,3 +44,24 @@ jobs:
           IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           docker build -t $IMAGE .
           docker push $IMAGE
+          
+      - name: Executing remote ssh commands
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.REMOTE_IP }} # 인스턴스 IP
+          username: ${{ secrets.REMOTE_USER }} # 우분투 아이디
+          key: ${{ secrets.REMOTE_PRIVATE_KEY }} # instance pem key
+          port: ${{ secrets.REMOTE_SSH_PORT }} # 접속포트
+          script: |
+            echo "배포 시작"
+            sudo docker stop myapp || true
+            sudo docker rm myapp || true
+            sudo docker rmi ${{ env.IMAGE_URI }} || true
+
+            echo "GHCR 로그인"
+            echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            echo "이미지 Pull"
+            sudo docker pull ${{ env.IMAGE_URI }}
+
+            sudo docker run -d --name myapp -p 8080:8080 -e EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${{ secrets.EUREKA_URL }} -e EUREKA_INSTANCE_HOSTNAME=${{ secrets.GCP_GW_IP }} -e QUEUE_MAX_CAPACITY=${{ secrets.QUEUE_MAX_CAP }} -e ALLOWED_IN_DURATION_SECONDS=${{ secrets.ALLOWED_IN_DUR }} -e QUEUE_SECRET_KEY=${{ secrets.QUEUE_SECRET_KEY }} -e JWT_JWKS_URI=${{ secrets.JWT_JWKS_URI }} ${{ env.IMAGE_URI }}
