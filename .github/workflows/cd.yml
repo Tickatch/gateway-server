@@ -44,7 +44,7 @@ jobs:
           IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           docker build -t $IMAGE .
           docker push $IMAGE
-          
+          echo "IMAGE_URI=$IMAGE" >> $GITHUB_ENV
       - name: Executing remote ssh commands
         uses: appleboy/ssh-action@v0.1.6
         with:
