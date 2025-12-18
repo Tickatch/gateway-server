@@ -28,6 +28,7 @@ public class QueueFilter implements GlobalFilter, Ordered {
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
     String path = exchange.getRequest().getPath().value();
+    HttpMethod method = exchange.getRequest().getMethod();
 
     // 해당 요청에서 큐 필터를 이미 한 번 통과했다면 스킵
     Boolean alreadyApplied = exchange.getAttribute(QUEUE_FILTER_APPLIED);
@@ -46,7 +47,7 @@ public class QueueFilter implements GlobalFilter, Ordered {
     String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
 
     // 1. 화이트리스트 체크
-    if (isWhitelistPath(path, exchange.getRequest().getMethod())) {
+    if (isWhitelistPath(path, method)) {
       return chain.filter(exchange);
     }
 
@@ -57,22 +58,22 @@ public class QueueFilter implements GlobalFilter, Ordered {
       );
     }
 
-    // 3. 대기열 API는 통과
-    if (path.startsWith("/api/v1/queue/")) {
-      return chain.filter(exchange);
-    }
-
-    // 4. 입장 가능한지 체크
+    // 3. 입장 가능한지 체크 (예매 관련 API만 대기열 적용)
     // 입장 가능: 입장 허용 타임스탬프 갱신 + 요청 통과
     // 입장 불가: 대기열 상태 반환
-    return queueService.canEnter(userId)
-        .flatMap(canEnter -> {
-          if (!canEnter) {
-            return rejectWithQueueInfo(exchange, userId);
-          }
+    if (isReservationPath(path, method)){
+      return queueService.canEnter(userId)
+          .flatMap(canEnter -> {
+            if (!canEnter) {
+              return rejectWithQueueInfo(exchange, userId);
+            }
 
-          return queueService.refreshAllowedInTimeStamp(userId).then(chain.filter(exchange));
-        });
+            return queueService.refreshAllowedInTimeStamp(userId).then(chain.filter(exchange));
+          });
+    }
+
+    // 4. 그 외 API는 통과
+    return chain.filter(exchange);
   }
 
   // redis 입장 허용 해시에 필드가 없다면
@@ -111,6 +112,14 @@ public class QueueFilter implements GlobalFilter, Ordered {
 
         return false;
     }
+  }
+
+  private boolean isReservationPath(String path, HttpMethod method) {
+    if (method != HttpMethod.POST) {
+      return false;
+    }
+
+    return path.startsWith("/api/v1/reservation-seats") || path.equals("/api/v1/reservations");
   }
 
   @Override
