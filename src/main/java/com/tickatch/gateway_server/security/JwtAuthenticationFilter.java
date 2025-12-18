@@ -19,8 +19,6 @@ public class JwtAuthenticationFilter implements WebFilter {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-    String requestId = exchange.getRequest().getId();
-    String path = exchange.getRequest().getPath().value();
 
     // 이미 실행되었다면 스킵
     Boolean alreadyApplied = exchange.getAttribute(JWT_FILTER_APPLIED);
@@ -30,6 +28,9 @@ public class JwtAuthenticationFilter implements WebFilter {
 
     // 실행했음을 표시
     exchange.getAttributes().put(JWT_FILTER_APPLIED, true);
+
+    // 서버 내부에서 사용하는 헤더 값들은 제거
+    ServerWebExchange sanitizedExchange = getSanitizedExchange(exchange);
 
     return ReactiveSecurityContextHolder.getContext()
         .filter(context -> context.getAuthentication() != null)
@@ -42,18 +43,30 @@ public class JwtAuthenticationFilter implements WebFilter {
           String userType = jwt.getClaimAsString(CLAIM_USER_TYPE);
 
           // 헤더에 사용자 정보 추가
-          ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+          ServerHttpRequest mutatedRequest = sanitizedExchange.getRequest().mutate()
               .header(HEADER_USER_ID, userId)
               .header(HEADER_USER_TYPE, userType != null ? userType : "")
               .build();
 
-          ServerWebExchange mutatedExchange = exchange.mutate()
+          ServerWebExchange mutatedExchange = sanitizedExchange.mutate()
               .request(mutatedRequest)
               .build();
 
           return chain.filter(mutatedExchange);
         })
         // 인증 정보가 없으면 그냥 통과 (permitAll 엔드포인트)
-        .switchIfEmpty(Mono.defer(() -> chain.filter(exchange)));
+        .switchIfEmpty(Mono.defer(() -> chain.filter(sanitizedExchange)));
+  }
+
+  private ServerWebExchange getSanitizedExchange(ServerWebExchange exchange) {
+    ServerHttpRequest sanitizedRequest = exchange.getRequest()
+        .mutate()
+        .headers(headers -> {
+          headers.remove(HEADER_USER_ID);
+          headers.remove(HEADER_USER_TYPE);
+        })
+        .build();
+
+    return exchange.mutate().request(sanitizedRequest).build();
   }
 }

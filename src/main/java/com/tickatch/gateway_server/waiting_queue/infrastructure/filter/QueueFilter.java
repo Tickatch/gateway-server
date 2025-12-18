@@ -5,20 +5,20 @@ import com.tickatch.gateway_server.waiting_queue.application.WaitingQueueService
 import com.tickatch.gateway_server.waiting_queue.application.exception.QueueException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class QueueFilter implements GlobalFilter, Ordered {
+public class QueueFilter implements WebFilter, Ordered {
 
   private static final String QUEUE_FILTER_APPLIED = "QUEUE_FILTER_APPLIED";
 
@@ -26,9 +26,10 @@ public class QueueFilter implements GlobalFilter, Ordered {
   private final MonoResponseHelper responseHelper;
 
   @Override
-  public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+  public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
     String path = exchange.getRequest().getPath().value();
     HttpMethod method = exchange.getRequest().getMethod();
+    String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
 
     // 해당 요청에서 큐 필터를 이미 한 번 통과했다면 스킵
     Boolean alreadyApplied = exchange.getAttribute(QUEUE_FILTER_APPLIED);
@@ -44,7 +45,6 @@ public class QueueFilter implements GlobalFilter, Ordered {
     // 큐 필터를 통과했다는 기록을 속성에 남김
     exchange.getAttributes().put(QUEUE_FILTER_APPLIED, true);
 
-    String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
 
     // 1. 화이트리스트 체크
     if (isWhitelistPath(path, method)) {
