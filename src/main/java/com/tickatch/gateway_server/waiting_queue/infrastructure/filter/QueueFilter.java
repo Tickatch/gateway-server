@@ -5,59 +5,74 @@ import com.tickatch.gateway_server.waiting_queue.application.WaitingQueueService
 import com.tickatch.gateway_server.waiting_queue.application.exception.QueueException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-
+@Component
 @RequiredArgsConstructor
 @Slf4j
-public class QueueFilter implements WebFilter{
+public class QueueFilter implements GlobalFilter, Ordered {
+
+  private static final String QUEUE_FILTER_APPLIED = "QUEUE_FILTER_APPLIED";
 
   private final WaitingQueueService queueService;
   private final MonoResponseHelper responseHelper;
 
   @Override
-  public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-    log.info("필터 익스체인지 해시코드:{}", System.identityHashCode(exchange));
+  public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    String path = exchange.getRequest().getPath().value();
+
+    // 해당 요청에서 큐 필터를 이미 한 번 통과했다면 스킵
+    Boolean alreadyApplied = exchange.getAttribute(QUEUE_FILTER_APPLIED);
+    if (Boolean.TRUE.equals(alreadyApplied)) {
+      return chain.filter(exchange);
+    }
+
+    // 응답이 이미 커밋되었다면 스킵
+    if (exchange.getResponse().isCommitted()) {
+      return chain.filter(exchange);
+    }
+
+    // 큐 필터를 통과했다는 기록을 속성에 남김
+    exchange.getAttributes().put(QUEUE_FILTER_APPLIED, true);
 
     String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
 
-    log.info("헤더:{}", exchange.getRequest().getHeaders());
-
-    String path = exchange.getRequest().getPath().value();
-
-    // 1. 로그인 관련 경로는 무조건 통과시킴
+    // 1. 화이트리스트 체크
     if (isWhitelistPath(path, exchange.getRequest().getMethod())) {
       return chain.filter(exchange);
     }
 
-    log.info("사용자 userId={}", userId);
-
-    // 2. 로그인 했는지 체크
+    // 2. 로그인 체크
     if (!StringUtils.hasText(userId)) {
       return responseHelper.writeError(
           exchange, HttpStatus.UNAUTHORIZED, "USER_ID_REQUIRED", "로그인이 필요합니다."
       );
     }
 
-    // 3. 로그인을 했다면 대기열 API는 통과시킴
+    // 3. 대기열 API는 통과
     if (path.startsWith("/api/v1/queue/")) {
       return chain.filter(exchange);
     }
 
-    // 4. 입장 가능한지 redis 체크
+    // 4. 입장 가능한지 체크
     // 입장 가능: 입장 허용 타임스탬프 갱신 + 요청 통과
     // 입장 불가: 대기열 상태 반환
     return queueService.canEnter(userId)
-        .flatMap(canEnter ->
-            canEnter ? queueService.refreshAllowedInTimeStamp(userId)
-                .then(chain.filter(exchange)) : rejectWithQueueInfo(exchange, userId)
-        );
+        .flatMap(canEnter -> {
+          if (!canEnter) {
+            return rejectWithQueueInfo(exchange, userId);
+          }
+
+          return queueService.refreshAllowedInTimeStamp(userId).then(chain.filter(exchange));
+        });
   }
 
   // redis 입장 허용 해시에 필드가 없다면
@@ -73,33 +88,33 @@ public class QueueFilter implements WebFilter{
   }
 
   private boolean isWhitelistPath(String path, HttpMethod method) {
-    // Auth 기본 API
-    if (path.equals("/api/v1/auth/login")) {
-      return true;
-    }
-    if (path.equals("/api/v1/auth/register")) {
-      return true;
-    }
-    if (path.equals("/api/v1/auth/refresh")) {
-      return true;
-    }
-    if (path.equals("/api/v1/auth/check-email")) {
-      return true;
-    }
-    if (path.equals("/api/v1/auth/me")) {
-      return true;
-    }
+    switch (path) {
+      // Auth 기본 API
+      case "/api/v1/auth/login":
+      case "/api/v1/auth/register":
+      case "/api/v1/auth/refresh":
+      case "/api/v1/auth/check-email":
+      case "/api/v1/auth/me":
+        return true;
 
-    // OAuth
-    if (method == HttpMethod.GET && path.matches("^/api/v1/auth/oauth/[^/]+$")) {
-      return true;
-    }
+      default:
+        // OAuth
+        if (method == HttpMethod.GET &&
+            path.matches("^/api/v1/auth/oauth/[^/]+$")) {
+          return true;
+        }
 
-    if (method == HttpMethod.GET && path.matches("^/api/v1/auth/oauth/[^/]+/callback$")) {
-      return true;
-    }
+        if (method == HttpMethod.GET &&
+            path.matches("^/api/v1/auth/oauth/[^/]+/callback$")) {
+          return true;
+        }
 
-    return false;
+        return false;
+    }
   }
 
+  @Override
+  public int getOrder() {
+    return -1;
+  }
 }

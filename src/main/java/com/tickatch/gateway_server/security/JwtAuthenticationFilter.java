@@ -9,30 +9,28 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-/**
- * JWT에서 사용자 정보를 추출하여 X-User-Id, X-User-Type 헤더로 전달하는 필터.
- *
- * <p>Spring Security OAuth2 Resource Server에서 JWT 검증 후
- * SecurityContext에 저장된 인증 정보를 사용한다.
- *
- * <p>추출 정보:
- * <ul>
- *   <li>sub (subject) → X-User-Id</li>
- *   <li>userType claim → X-User-Type</li>
- * </ul>
- *
- * @author Tickatch
- * @since 1.0.0
- */
 @Slf4j
 public class JwtAuthenticationFilter implements WebFilter {
 
   private static final String HEADER_USER_ID = "X-User-Id";
   private static final String HEADER_USER_TYPE = "X-User-Type";
   private static final String CLAIM_USER_TYPE = "userType";
+  private static final String JWT_FILTER_APPLIED = "JWT_FILTER_APPLIED";
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    String requestId = exchange.getRequest().getId();
+    String path = exchange.getRequest().getPath().value();
+
+    // 이미 실행되었다면 스킵
+    Boolean alreadyApplied = exchange.getAttribute(JWT_FILTER_APPLIED);
+    if (Boolean.TRUE.equals(alreadyApplied)) {
+      return chain.filter(exchange);
+    }
+
+    // 실행했음을 표시
+    exchange.getAttributes().put(JWT_FILTER_APPLIED, true);
+
     return ReactiveSecurityContextHolder.getContext()
         .filter(context -> context.getAuthentication() != null)
         .filter(context -> context.getAuthentication().isAuthenticated())
@@ -40,14 +38,8 @@ public class JwtAuthenticationFilter implements WebFilter {
         .map(context -> (JwtAuthenticationToken) context.getAuthentication())
         .map(JwtAuthenticationToken::getToken)
         .flatMap(jwt -> {
-          // JWT에서 사용자 정보 추출
           String userId = jwt.getSubject();
           String userType = jwt.getClaimAsString(CLAIM_USER_TYPE);
-
-          log.info("JWT 인증 정보 추출 - userId: {}, userType: {}", userId, userType);
-
-          // SecurityContext에 userId 저장
-
 
           // 헤더에 사용자 정보 추가
           ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
@@ -58,10 +50,10 @@ public class JwtAuthenticationFilter implements WebFilter {
           ServerWebExchange mutatedExchange = exchange.mutate()
               .request(mutatedRequest)
               .build();
-          log.info("jwt필터 익스체인지 해시코드:{}", System.identityHashCode(mutatedExchange));
+
           return chain.filter(mutatedExchange);
         })
         // 인증 정보가 없으면 그냥 통과 (permitAll 엔드포인트)
-        .switchIfEmpty(chain.filter(exchange));
+        .switchIfEmpty(Mono.defer(() -> chain.filter(exchange)));
   }
 }
