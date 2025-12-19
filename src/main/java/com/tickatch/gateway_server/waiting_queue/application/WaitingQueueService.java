@@ -1,60 +1,68 @@
 package com.tickatch.gateway_server.waiting_queue.application;
 
-import com.tickatch.gateway_server.global.util.HmacUtil;
 import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResponse;
 import com.tickatch.gateway_server.waiting_queue.application.port.QueueRepository;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class WaitingQueueService {
 
   private final QueueRepository queueRepository;
-  private final String secretKey;
-
-  public WaitingQueueService(
-      QueueRepository queueRepository,
-      @Value("${queue.secret-key}") String secretKey) {
-    this.queueRepository = queueRepository;
-    this.secretKey = secretKey;
-  }
+  private final QueueStatusNotifier notifier;
 
   public Mono<String> lineUp(String userId) {
-    String token = getQueueToken(userId);
-    return queueRepository.lineUp(token);
+    return queueRepository.lineUp(userId);
   }
 
   public Mono<Boolean> canEnter(String userId) {
-    String token = getQueueToken(userId);
-    return queueRepository.isAlreadyAllowedIn(token);
+    return queueRepository.isAlreadyAllowedIn(userId);
   }
 
   public Mono<QueueStatusResponse> getStatus(String userId) {
-    String token = getQueueToken(userId);
-    return queueRepository.getCurrentStatus(token);
+    return queueRepository.getCurrentStatus(userId);
   }
 
   public Mono<Void> refreshAllowedInTimeStamp(String userId) {
-    String token = getQueueToken(userId);
-    return queueRepository.refreshAllowedInTimestamp(token);
+    return queueRepository.refreshAllowedInTimestamp(userId);
   }
 
   public Mono<Boolean> removeAllowedToken(String userId) {
-    String token = getQueueToken(userId);
-    return queueRepository.removeAllowedToken(token);
+    return queueRepository.removeAllowedToken(userId)
+        .flatMap(result -> {
+          log.info("result = {}", result);
+          if (!result.removed()) {
+            return Mono.just(false);
+          }
+
+          // 다음 대기자가 입장되어 SSE 알림 전송
+          String nextUserId = result.nextUserId();
+          if (nextUserId != null) {
+            notifier.notifyAllowedIn(nextUserId);
+          }
+
+          return Mono.just(true);
+        });
   }
 
   public Mono<Void> cleanupExpiredTokens() {
-    return queueRepository.cleanupExpiredTokens();
+    return queueRepository.cleanupExpiredTokens()
+        .flatMap(result -> {
+          List<String> userIds = result.userIds();
+          if (!userIds.isEmpty()) {
+            userIds.forEach(notifier::notifyAllowedIn);
+          }
+
+          return Mono.empty();
+        });
   }
 
   public Mono<Boolean> removeWaitingToken(String userId) {
-    String token = getQueueToken(userId);
-    return queueRepository.removeWaitingToken(token);
-  }
-
-  private String getQueueToken(String userId) {
-    return HmacUtil.hmacSha26(secretKey, userId);
+    return queueRepository.removeWaitingToken(userId);
   }
 }
