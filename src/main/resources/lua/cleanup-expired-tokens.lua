@@ -19,16 +19,19 @@ for i = 1, #allTokens, 2 do
 end
 
 -- 제거한 토큰 개수만큼 다음 사용자들 입장 허용
+local allowedUserIds = {}
+
 for i = 1, expiredCount do
     -- 대기하는 사람 1명씩 가져오기
     local result = redis.call('ZPOPMIN', waitingQueueKey, 1)
     if #result > 0 then
         local nextToken = result[1]
         redis.call('HSET', allowedHashKey, nextToken, currentTimestamp)
+        table.insert(allowedUserIds, nextToken)
     else
         -- 더 이상 대기하는 사람이 없다면 break
         break
     end
 end
 
-return expiredCount
+return allowedUserIds

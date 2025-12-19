@@ -7,7 +7,7 @@ local timestamp = ARGV[2]
 local removed = redis.call('HDEL', allowedHashKey, token)
 
 if removed == 0 then
-    return 0
+    return {0, nil}
 end
 
 -- 다음 사용자 입장 허용 (ZPOPMIN은 [member, score] 형식으로 배열을 반환)
@@ -17,6 +17,10 @@ local result = redis.call('ZPOPMIN', waitingQueueKey, 1)
 if #result > 0 then
     local nextToken = result[1]
     redis.call('HSET', allowedHashKey, nextToken, timestamp)
+
+    -- 삭제 성공 + 다음 대기자의 userId 반환
+    return {1, nextToken}
 end
 
-return 1
+-- 삭제는 성공했지만, 다음 대기자가 없음
+return {1, nil}
