@@ -35,35 +35,60 @@ public class QueueSseController {
 
     log.info("SSE 연결 시작 - userId: {}", userId);
 
-    // 1. 초기 상태 확인
-    // 바로 입장 가능한 경우 SSE 구독 안 시킴
-    Mono<ServerSentEvent<Object>> initialStatus = getInitialStatus(userId);
+    return queueService.canEnter(userId)
+        .flatMapMany(canEnter -> {
+          if (canEnter) {
+            // 이미 입장 가능 -> ALLOWED_IN 이벤트만 보내고 완료
+            return Flux.just(ServerSentEvent.builder()
+                .event("ALLOWED_IN")
+                .data(new AllowedInEvent("입장 가능합니다."))
+                .build());
+          } else {
+            // 대기 중 -> 초기 상태 + 업데이트 스트림 + heartbeat
+            Mono<ServerSentEvent<Object>> initialStatus = getInitialStatus(userId);
 
-    // 2. SSE 구독
-    Flux<ServerSentEvent<Object>> statusUpdates = subscribeToUpdates(userId);
+            Flux<ServerSentEvent<Object>> statusUpdates = subscribeToUpdates(userId);
 
-    // 3. 연결 유지를 위한 heartbeat 보내기 (30초마다)
-    Flux<ServerSentEvent<Object>> heartbeat = Flux.interval(Duration.ofSeconds(30))
-        .map(tick -> ServerSentEvent.builder()
-            .event("HEARTBEAT")
-            .data(new HeartbeatEvent(System.currentTimeMillis()))
-            .build());
+            Flux<ServerSentEvent<Object>> heartbeat = Flux.interval(Duration.ofSeconds(30))
+                .map(tick -> ServerSentEvent.builder()
+                    .event("HEARTBEAT")
+                    .data(new HeartbeatEvent(System.currentTimeMillis()))
+                    .build());
 
-    // 4. 초기 상태 + 업데이트 스트림 + heartbeat를 결합해서 반환
-    return Flux.concat(initialStatus, Flux.merge(statusUpdates, heartbeat))
-        .doOnCancel(() -> {
-          log.info("SSE 연결 종료 - userId: {}", userId);
+            // merge() = 여러 Publisher를 동시에 구독해서, 도착하는 대로 섞어서 발행 (순서 보장 X)
+            Flux<ServerSentEvent<Object>> updates = Flux.merge(statusUpdates, heartbeat)
+                .takeUntil(sse -> "ALLOWED_IN".equals(sse.event()));
+
+            // concat() = 앞 Publisher가 완전히 끝난 후에 다음 Publisher를 구독 (순서 보장 O)
+            return Flux.concat(initialStatus, updates);
+          }
+        })
+        .doFinally(signalType -> {
+          log.info("SSE 종료 - userId: {}, 이유: {}", userId, signalType);
           queueStatusNotifier.unsubscribe(userId);
         })
-        .doOnError(e -> {
-          log.error("SSE 스트림 에러 - userId: {}", userId, e);
-          queueStatusNotifier.unsubscribe(userId);
+        .doOnCancel(() -> {
+          log.info("대기열에서 토큰 지우기");
+          queueService.removeWaitingToken(userId).subscribe();
         });
   }
 
+  private Mono<ServerSentEvent<Object>> getInitialStatus(String userId) {
+    return queueService.getStatus(userId)
+        .map(status -> ServerSentEvent.builder()
+            .event("STATUS_UPDATE")
+            .data(status)
+            .build())
+        .onErrorResume(QueueException.class, e ->
+            Mono.just(ServerSentEvent.builder()
+                .event("ERROR")
+                .data(new ErrorEvent("NOT_IN_QUEUE", "대기열에 등록되지 않은 사용자입니다."))
+                .build())
+        );
+  }
+
   private Flux<ServerSentEvent<Object>> subscribeToUpdates(String userId) {
-    return queueStatusNotifier
-        .subscribe(userId)
+    return queueStatusNotifier.subscribe(userId)
         .map(event -> {
           if (event instanceof QueueStatusChangeEvent statusChange) {
             return ServerSentEvent.builder()
@@ -76,34 +101,7 @@ public class QueueSseController {
                 .data(new AllowedInEvent("입장 가능합니다."))
                 .build();
           } else {
-            return ServerSentEvent.builder()
-                .event("UNKNOWN")
-                .data(event)
-                .build();
-          }
-        });
-  }
-
-  private Mono<ServerSentEvent<Object>> getInitialStatus(String userId) {
-    return queueService.canEnter(userId)
-        .flatMap(canEnter -> {
-          if (canEnter) {
-            return Mono.just(ServerSentEvent.builder()
-                .event("ALLOWED_IN")
-                .data(new AllowedInEvent("입장 가능합니다."))
-                .build());
-          } else {
-            return queueService.getStatus(userId)
-                .map(status -> ServerSentEvent.builder()
-                    .event("STATUS_UPDATE")
-                    .data(status)
-                    .build())
-                .onErrorResume(QueueException.class, e ->
-                    Mono.just(ServerSentEvent.builder()
-                        .event("ERROR")
-                        .data(new ErrorEvent("NOT_IN_QUEUE", "대기열에 등록되지 않은 사용자입니다."))
-                        .build())
-                );
+            return ServerSentEvent.builder().event("UNKNOWN").data(event).build();
           }
         });
   }
