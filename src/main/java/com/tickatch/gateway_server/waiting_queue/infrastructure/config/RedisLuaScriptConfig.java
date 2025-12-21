@@ -1,5 +1,6 @@
 package com.tickatch.gateway_server.waiting_queue.infrastructure.config;
 
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -13,12 +14,12 @@ public class RedisLuaScriptConfig {
   }
 
   @Bean
-  public RedisScript<Long> removeAllowedTokenScript() {
-    return RedisScript.of(new ClassPathResource("lua/remove-allowed-token.lua"), Long.class);
+  public RedisScript<List> removeAllowedUserIdScript() {
+    return RedisScript.of(new ClassPathResource("lua/remove-allowed-user-id.lua"), List.class);
   }
 
   @Bean
-  public RedisScript<Long> cleanupExpiredTokensScript() {
-    return RedisScript.of(new ClassPathResource("lua/cleanup-expired-tokens.lua"), Long.class);
+  public RedisScript<List> cleanupExpiredUserIdsScript() {
+    return RedisScript.of(new ClassPathResource("lua/cleanup-expired-user-ids.lua"), List.class);
   }
 }

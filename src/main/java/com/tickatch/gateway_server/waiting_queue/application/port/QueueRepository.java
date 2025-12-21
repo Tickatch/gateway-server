@@ -1,21 +1,23 @@
 package com.tickatch.gateway_server.waiting_queue.application.port;
 
 import com.tickatch.gateway_server.waiting_queue.application.dto.QueueStatusResponse;
+import com.tickatch.gateway_server.waiting_queue.application.dto.RemoveAllowedUserResult;
+import com.tickatch.gateway_server.waiting_queue.application.dto.RemoveExpiredUsersResult;
 import reactor.core.publisher.Mono;
 
 public interface QueueRepository {
 
-  Mono<String> lineUp(String token);
+  Mono<String> lineUp(String userId);
 
-  Mono<QueueStatusResponse> getCurrentStatus(String token);
+  Mono<QueueStatusResponse> getCurrentStatus(String userId);
 
-  Mono<Boolean> isAlreadyAllowedIn(String token);
+  Mono<Boolean> isAlreadyAllowedIn(String userId);
 
-  Mono<Boolean> removeAllowedToken(String token);
+  Mono<RemoveAllowedUserResult> removeAllowedUserId(String userId);
 
-  Mono<Void> refreshAllowedInTimestamp(String token);
+  Mono<Void> refreshAllowedInTimestamp(String userId);
 
-  Mono<Void> cleanupExpiredTokens();
+  Mono<RemoveExpiredUsersResult> cleanupExpiredUserIds();
 
-  Mono<Boolean> removeWaitingToken(String token);
+  Mono<Boolean> removeWaitingUserId(String userId);
 }

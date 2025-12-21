@@ -1,7 +1,5 @@
 package com.tickatch.gateway_server.waiting_queue.presentation.dto;
 
-public record LineUpResponse(
-    String queueToken
-) {
+public record ErrorEvent(String code, String message) {
 
 }
