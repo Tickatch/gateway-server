@@ -41,7 +41,7 @@ public class QueueApi {
 
   @DeleteMapping("/allowed-in-token")
   public Mono<ApiResponse<Void>> removeAllowedInToken(@RequestHeader("X-User-Id") String userId) {
-    return queueService.removeAllowedToken(userId)
+    return queueService.removeAllowedUserId(userId)
         .map(removed -> {
           if (removed) {
             return ApiResponse.success(null, "입장 토큰이 무효화되었습니다.");
@@ -53,7 +53,7 @@ public class QueueApi {
 
   @DeleteMapping("/waiting-token")
   public Mono<ApiResponse<Void>> removeWaitingToken(@RequestHeader("X-User-Id") String userId) {
-    return queueService.removeWaitingToken(userId)
+    return queueService.removeWaitingUserId(userId)
         .map(removed -> {
           if (removed) {
             return ApiResponse.success(null, "대기열 토큰이 무효화되었습니다.");

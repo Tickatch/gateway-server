@@ -13,11 +13,11 @@ public interface QueueRepository {
 
   Mono<Boolean> isAlreadyAllowedIn(String userId);
 
-  Mono<RemoveAllowedUserResult> removeAllowedToken(String userId);
+  Mono<RemoveAllowedUserResult> removeAllowedUserId(String userId);
 
   Mono<Void> refreshAllowedInTimestamp(String userId);
 
-  Mono<RemoveExpiredUsersResult> cleanupExpiredTokens();
+  Mono<RemoveExpiredUsersResult> cleanupExpiredUserIds();
 
-  Mono<Boolean> removeWaitingToken(String userId);
+  Mono<Boolean> removeWaitingUserId(String userId);
 }

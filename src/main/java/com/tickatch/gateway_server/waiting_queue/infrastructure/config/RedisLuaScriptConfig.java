@@ -14,12 +14,12 @@ public class RedisLuaScriptConfig {
   }
 
   @Bean
-  public RedisScript<List> removeAllowedTokenScript() {
-    return RedisScript.of(new ClassPathResource("lua/remove-allowed-token.lua"), List.class);
+  public RedisScript<List> removeAllowedUserIdScript() {
+    return RedisScript.of(new ClassPathResource("lua/remove-allowed-user-id.lua"), List.class);
   }
 
   @Bean
-  public RedisScript<List> cleanupExpiredTokensScript() {
-    return RedisScript.of(new ClassPathResource("lua/cleanup-expired-tokens.lua"), List.class);
+  public RedisScript<List> cleanupExpiredUserIdsScript() {
+    return RedisScript.of(new ClassPathResource("lua/cleanup-expired-user-ids.lua"), List.class);
   }
 }

@@ -69,7 +69,7 @@ public class QueueSseController {
         })
         .doOnCancel(() -> {
           log.info("대기열에서 토큰 지우기");
-          queueService.removeWaitingToken(userId).subscribe();
+          queueService.removeWaitingUserId(userId).subscribe();
         });
   }
 

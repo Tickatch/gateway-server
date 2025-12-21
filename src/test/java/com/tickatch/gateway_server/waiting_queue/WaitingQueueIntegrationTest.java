@@ -127,7 +127,7 @@ class WaitingQueueIntegrationTest {
     queueService.lineUp(USER_ID_3).block();
 
     // when: 첫 번째 사용자의 토큰 제거
-    queueService.removeAllowedToken(USER_ID_1).block();
+    queueService.removeAllowedUserId(USER_ID_1).block();
 
     // then: 다음 사용자가 입장 가능해짐
     // 약간의 지연 후 확인 (비동기 처리 고려)
@@ -148,7 +148,7 @@ class WaitingQueueIntegrationTest {
     redis.opsForHash().put("allowedIn:users", token, "0").block();
 
     // when: 만료된 토큰 정리
-    StepVerifier.create(queueService.cleanupExpiredTokens())
+    StepVerifier.create(queueService.cleanupExpiredUserIds())
         .verifyComplete();
 
     // then: 더 이상 입장 불가

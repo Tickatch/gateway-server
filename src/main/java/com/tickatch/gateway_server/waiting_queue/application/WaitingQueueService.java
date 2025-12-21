@@ -32,8 +32,8 @@ public class WaitingQueueService {
     return queueRepository.refreshAllowedInTimestamp(userId);
   }
 
-  public Mono<Boolean> removeAllowedToken(String userId) {
-    return queueRepository.removeAllowedToken(userId)
+  public Mono<Boolean> removeAllowedUserId(String userId) {
+    return queueRepository.removeAllowedUserId(userId)
         .flatMap(result -> {
           log.info("result = {}", result);
           if (!result.removed()) {
@@ -50,8 +50,8 @@ public class WaitingQueueService {
         });
   }
 
-  public Mono<Void> cleanupExpiredTokens() {
-    return queueRepository.cleanupExpiredTokens()
+  public Mono<Void> cleanupExpiredUserIds() {
+    return queueRepository.cleanupExpiredUserIds()
         .flatMap(result -> {
           List<String> userIds = result.userIds();
           if (!userIds.isEmpty()) {
@@ -62,7 +62,7 @@ public class WaitingQueueService {
         });
   }
 
-  public Mono<Boolean> removeWaitingToken(String userId) {
-    return queueRepository.removeWaitingToken(userId);
+  public Mono<Boolean> removeWaitingUserId(String userId) {
+    return queueRepository.removeWaitingUserId(userId);
   }
 }

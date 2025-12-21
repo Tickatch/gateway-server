@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum QueueErrorCode implements ErrorCode {
 
-  TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "TOKEN_NOT_FOUND");
+  USER_ID_NOT_FOUND(HttpStatus.NOT_FOUND.value(), "USER_ID_NOT_FOUND");
 
   private final int status;
   private final String code;

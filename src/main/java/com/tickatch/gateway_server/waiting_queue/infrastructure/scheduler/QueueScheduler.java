@@ -27,12 +27,12 @@ public class QueueScheduler {
 
   @Scheduled(fixedRate = 300000, initialDelay = 300000)
   @SchedulerLock(
-      name = "allowedInTokenCleanup",
+      name = "allowedInUserIdsCleanup",
       lockAtMostFor = "4m",
       lockAtLeastFor = "4m"
   )
   public void processNextEntry() {
-    queueService.cleanupExpiredTokens()
+    queueService.cleanupExpiredUserIds()
         .doOnSuccess(v -> log.info("만료 토큰 정리 완료"))
         .onErrorResume(error -> {
           log.error("만료 토큰 정리 중 오류 발생", error);
