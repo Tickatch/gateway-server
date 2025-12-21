@@ -20,6 +20,11 @@ public class JwtAuthenticationFilter implements WebFilter {
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
 
+    // 응답이 이미 커밋되었다면 스킵
+    if (exchange.getResponse().isCommitted()) {
+      return Mono.empty();
+    }
+
     // 이미 실행되었다면 스킵
     Boolean alreadyApplied = exchange.getAttribute(JWT_FILTER_APPLIED);
     if (Boolean.TRUE.equals(alreadyApplied)) {
@@ -31,6 +36,7 @@ public class JwtAuthenticationFilter implements WebFilter {
 
     // 서버 내부에서 사용하는 헤더 값들은 제거
     ServerWebExchange sanitizedExchange = getSanitizedExchange(exchange);
+//    ServerWebExchange sanitizedExchange = exchange;
 
     return ReactiveSecurityContextHolder.getContext()
         .filter(context -> context.getAuthentication() != null)
