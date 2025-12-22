@@ -42,6 +42,8 @@ management:
 logging:
   level:
     root: INFO
+    org.springframework.cloud.gateway.route: INFO
+    org.springframework.security.web.server.util.matcher: INFO
 
 
 queue:
