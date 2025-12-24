@@ -217,12 +217,15 @@ public SecurityWebFilterChain securityWebFilterChain(
       .authorizeExchange(exchanges -> exchanges
           // Actuator 엔드포인트 허용
           .pathMatchers("/actuator/**").permitAll()
+
           // Health Check
           .pathMatchers("/health/**").permitAll()
+
           // Swagger / OpenAPI
           .pathMatchers("/swagger-ui/**").permitAll()
           .pathMatchers("/swagger-ui.html").permitAll()
           .pathMatchers("/v3/api-docs/**").permitAll()
+
           // 각 서비스별 API docs
           .pathMatchers("/auth-service/v3/api-docs/**").permitAll()
           .pathMatchers("/product-service/v3/api-docs/**").permitAll()
@@ -231,14 +234,13 @@ public SecurityWebFilterChain securityWebFilterChain(
           .pathMatchers("/arthall-service/v3/api-docs/**").permitAll()
           .pathMatchers("/ticket-service/v3/api-docs/**").permitAll()
 
-          // ========================================
           // Auth Service - 공개 API
-          // ========================================
           .pathMatchers("/api/v1/auth/login").permitAll()
           .pathMatchers("/api/v1/auth/register").permitAll()
           .pathMatchers("/api/v1/auth/refresh").permitAll()
           .pathMatchers("/api/v1/auth/check-email").permitAll()
 
+          // 상품 조회, 아트홀 조회, 티켓 사용
           .pathMatchers(HttpMethod.GET, "/api/v1/products").permitAll()
           .pathMatchers(HttpMethod.GET, "/api/v1/products/*").permitAll()
           .pathMatchers(HttpMethod.GET, "/api/v1/arthalls/**").permitAll()
