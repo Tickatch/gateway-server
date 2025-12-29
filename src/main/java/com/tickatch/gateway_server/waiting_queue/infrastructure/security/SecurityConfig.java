@@ -46,9 +46,6 @@ public class SecurityConfig {
             .pathMatchers("/arthall-service/v3/api-docs/**").permitAll()
             .pathMatchers("/ticket-service/v3/api-docs/**").permitAll()
 
-            // JWKS (Public Key 공개)
-            .pathMatchers("/.well-known/**").permitAll()
-
             // ========================================
             // Auth Service - 공개 API
             // ========================================
@@ -56,21 +53,18 @@ public class SecurityConfig {
             .pathMatchers("/api/v1/auth/register").permitAll()
             .pathMatchers("/api/v1/auth/refresh").permitAll()
             .pathMatchers("/api/v1/auth/check-email").permitAll()
-            .pathMatchers("/api/v1/auth/me").permitAll()
+            .pathMatchers("/api/v1/auth/me").authenticated()
+
+            .pathMatchers(HttpMethod.GET, "/api/v1/products").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/v1/products/*").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/v1/arthalls/**").permitAll()
+            .pathMatchers(HttpMethod.POST, "/api/v1/tickets/*/use").permitAll()
 
             // OAuth - 로그인/콜백만 공개 (link, unlink는 인증 필요)
             .pathMatchers(HttpMethod.GET, "/api/v1/auth/oauth/*/callback").permitAll()
             .pathMatchers(HttpMethod.GET, "/api/v1/auth/oauth/*").permitAll()
 
-            // 대기열 API도 인증 필수
-            .pathMatchers("/api/v1/queue/**").authenticated()
-
-            // 예매 관련 API는 인증 필수
-            .pathMatchers(HttpMethod.POST, "/api/v1/reservations").authenticated()
-            .pathMatchers(HttpMethod.POST, "/api/v1/reservation-seats/**").authenticated()
-
-            // 나머지는 요청 허용 (추후 인증 설정 추가)
-            .anyExchange().permitAll()
+            .anyExchange().authenticated()
         )
         .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
         .addFilterAfter(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
