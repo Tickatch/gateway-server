@@ -129,6 +129,38 @@ SSE 방식으로 전환한 이후에는 사용자당 최초 1회 연결만 발�
 
 Nginx가 두 Gateway 서버로 로드밸런싱합니다.
 
+### 트러블슈팅
+아래 NGINX 설정을 적용 안 하면 SSE가 작동 안 함 
+```
+server {
+    # ...
+
+    # SSE 대기열 스트림
+    location /api/v1/queue/stream {
+        # 게이트웨이 인스턴스 내부 IP 주소
+        proxy_pass http://10.178.0.2:8080;
+        
+        # 리버스 프록시 헤더 설정
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # SSE 필수 설정
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_http_version 1.1;
+        proxy_set_header Connection '';
+        proxy_read_timeout 86400s;
+    }
+    # ...
+}
+```
+- `proxy_buffering off`: Nginx는 기본적으로 응답을 모아서(buffer) 한 번에 전달하지만 SSE는 데이터가 즉시 클라이언트에게 전달되어야 함
+- `proxy_cache off`: Nginx는 기본적으로 응답을 캐싱해두고 같은 요청이 올 경우 백엔드 서버를 안 거치고 바로 캐싱한 값을 전달함. SSE는 “응답”이 아니라 “스트림”이기 때문에 캐시 대상이 되어서는 안 됨
+- `proxy_http_version 1.1`: keep-alive 연결을 사용해야 연결이 끊기지 않음
+- `proxy_set_header Connection ''`: Nginx가 `Connection: close` 헤더를 자동으로 붙이는 걸 방지
+- `proxy_read_timeout 86400s`: Nginx가 백엔드 서버로부터 응답 데이터를 기다릴 수 있는 최대 시간
 ---
 
 ## 포트
