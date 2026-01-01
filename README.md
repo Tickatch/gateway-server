@@ -100,6 +100,9 @@ SSE 방식으로 전환한 이후에는 사용자당 최초 1회 연결만 발�
 3. queue:counter (String)
    - 대기 순번 생성용 카운터
 ```
+
+<img width="1864" height="1628" alt="image" src="https://github.com/user-attachments/assets/dda8486d-687c-44fb-b84c-26f39abae9a2" />
+
 ---
 
 ## 아키텍처
